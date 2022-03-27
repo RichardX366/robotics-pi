@@ -1,6 +1,7 @@
 import { io } from 'socket.io-client';
 import stepper from './projects/stepper';
 import dotenv from 'dotenv';
+import cardboardCNCTest from './projects/cardboardCNCTest';
 dotenv.config();
 
 interface Args {
@@ -19,6 +20,9 @@ socket.on('connect', () => {
   switch (args.config) {
     case 'stepper':
       stepper();
+      break;
+    case 'cardboardCNCTest':
+      cardboardCNCTest();
       break;
   }
 });
