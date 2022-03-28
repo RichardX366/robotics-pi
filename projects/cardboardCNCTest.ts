@@ -8,8 +8,7 @@ export default async function cardboardCNCTest() {
         socket.emit('done');
         break;
       case 'error':
-        console.trace(data);
-        socket.emit('done');
+        socket.emit('error');
         break;
     }
   }, './arduino/cardboardCNC');
