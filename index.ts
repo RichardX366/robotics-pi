@@ -8,7 +8,9 @@ interface Args {
   [key: string]: string;
 }
 export const args: Args = Object.fromEntries(
-  process.argv.slice(2).map((v: string) => v.split('=')),
+  process.argv
+    .slice(2)
+    .map((v: string) => (v.split('=').length === 1 ? [v, true] : v.split('='))),
 );
 
 export const socket = io(process.env.SOCKET_URL as string);

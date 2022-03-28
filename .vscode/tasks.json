@@ -1,0 +1,25 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "process",
+			"label": "Arduino build",
+			"command": "arduino-cli",
+			"args": [
+				"compile",
+				"-b",
+				"arduino:avr:uno",
+				"-u",
+				"-t",
+				"-p",
+				"/dev/ttyACM0",
+				"${file}"
+			],
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build",
+			"detail": "compiler: arduino-cli"
+		}
+	]
+}
