@@ -15,6 +15,7 @@
   },
   "scripts": {
     "ports": "arduino-cli board list",
-    "start": "nodemon index.ts"
+    "dev": "nodemon index.ts",
+    "start": "ts-node index.ts"
   }
 }

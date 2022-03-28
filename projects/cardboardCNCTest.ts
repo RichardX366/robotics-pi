@@ -1,25 +1,8 @@
-import { SerialPort, ReadlineParser } from 'serialport';
-import { socket, args } from '..';
-import { execSync } from 'child_process';
+import { socket } from '..';
+import Arduino from '../arduino';
 
 export default async function cardboardCNCTest() {
-  const port = JSON.parse(
-    execSync('arduino-cli board list --format json').toString(),
-  ).find((v: any) => v.matching_boards).port.address;
-  if (args.buildArduino) {
-    execSync(
-      `arduino-cli compile -b arduino:avr:uno -u -t -p ${port} ./arduino/cardboardCNC`,
-    );
-  }
-  const arduino = new SerialPort({
-    path: port,
-    baudRate: 115200,
-  });
-  const parser = arduino.pipe(new ReadlineParser({ delimiter: '\r\n' }));
-  parser.on('data', (unparsedData: Buffer) => {
-    const raw = unparsedData.toString().split(':');
-    const key = raw[0];
-    const data = raw[1];
+  const arduino = new Arduino((key, data) => {
     switch (key) {
       case 'done':
         socket.emit('done');
@@ -29,17 +12,17 @@ export default async function cardboardCNCTest() {
         socket.emit('done');
         break;
     }
-  });
+  }, './arduino/cardboardCNC');
   socket.on('step', (steps) => {
-    arduino.write(`step:${steps}`);
+    arduino.emit('step', steps);
   });
   socket.on('move', (position) => {
-    arduino.write(`move:${position}`);
+    arduino.emit('move', position);
   });
   socket.on('setClosest', () => {
-    arduino.write('tune:setClosest');
+    arduino.emit('tune', 'setClosest');
   });
   socket.on('setFarthest', () => {
-    arduino.write('tune:setFarthest');
+    arduino.emit('tune', 'setFarthest');
   });
 }

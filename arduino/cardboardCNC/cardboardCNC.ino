@@ -5,7 +5,7 @@
 #define stepsPerRevolution 2048
 #define echoPin 15
 #define triggerPin 14
-#define precision 2
+#define precision 1
 #define ultrasonicRepetitions 5
 #define maxAttempts 10
 
@@ -79,7 +79,7 @@ void loop() {
       if (data == "setClosest") {
         closestDistance = getDistance();
         testingStepsPerMM = true;
-        step(-500);
+        step(-2000);
       } else if (data == "setFarthest") {
         farthestDistance = getDistance();
         Serial.println("done");
@@ -93,7 +93,7 @@ void loop() {
       movingBySteps = false;
     } else if (testingStepsPerMM) {
       testingStepsPerMM = false;
-      stepsPerMM = 500 / (getDistance() - closestDistance);
+      stepsPerMM = 2000 / (getDistance() - closestDistance);
       Serial.println("done");
     } else {
       if (closeEnough()) {
