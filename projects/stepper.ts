@@ -6,5 +6,5 @@ export default async function stepper() {
     if (data === 'done') socket.emit('done');
     console.log(data);
   }, './arduino/stepper');
-  socket.onAny(arduino.emit);
+  socket.onAny((data) => arduino.emit(data));
 }
