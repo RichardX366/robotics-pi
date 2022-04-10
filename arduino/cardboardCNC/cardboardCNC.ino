@@ -2,12 +2,11 @@
 
 // Distances are in mm
 
-#define stepsPerRevolution 2048
 #define echoPin 15
 #define triggerPin 14
-#define precision 1
-#define ultrasonicRepetitions 5
-#define maxAttempts 10
+#define precision .3
+#define ultrasonicRepetitions 10
+#define maxAttempts 20
 
 // Swap first and last pins
 AccelStepper bottomStepper(AccelStepper::FULL4WIRE, 5, 3, 4, 2);
