@@ -12,16 +12,5 @@ export default async function cardboardCNCTest() {
         break;
     }
   }, './arduino/cardboardCNC');
-  socket.on('step', (steps) => {
-    arduino.emit('step', steps);
-  });
-  socket.on('move', (position) => {
-    arduino.emit('move', position);
-  });
-  socket.on('setClosest', () => {
-    arduino.emit('tune', 'setClosest');
-  });
-  socket.on('setFarthest', () => {
-    arduino.emit('tune', 'setFarthest');
-  });
+  socket.onAny((...data) => arduino.emit(data[0], data[1]));
 }

@@ -2,33 +2,49 @@
 
 // Distances are in mm
 
-#define echoPin 15
 #define triggerPin 14
+#define bottomEchoPin 15
+#define verticalEchoPin 16
 #define precision .3
 #define ultrasonicRepetitions 10
 #define maxAttempts 20
 
 // Swap first and last pins
 AccelStepper bottomStepper(AccelStepper::FULL4WIRE, 5, 3, 4, 2);
+AccelStepper verticalStepper(AccelStepper::FULL4WIRE, 9, 7, 8, 6);
 
-bool stepping = false;
+bool bottomStepping = false;
+bool verticalStepping = false;
+
+double bottomTargetDistance;
+double bottomClosestDistance;
+double bottomFarthestDistance;
+
+double verticalTargetDistance;
+double verticalClosestDistance;
+double verticalFarthestDistance;
+
+int bottomMovementAttempts = 0;
+int verticalMovementAttempts = 0;
+
 bool movingBySteps = false;
 bool testingStepsPerMM = false;
-
-double targetDistance;
-double closestDistance;
-double farthestDistance;
 double stepsPerMM;
-
-int movementAttempts = 0;
+int steppersDone = 2;
 
 int mmToSteps(double mm) { return round(mm * stepsPerMM); };
 
-bool closeEnough() {
-  return abs(getDistance() - closestDistance - targetDistance) < precision;
+bool bottomCloseEnough() {
+  return abs(getBottomDistance() - bottomClosestDistance -
+             bottomTargetDistance) < precision;
 };
 
-double getDistance() {
+bool verticalCloseEnough() {
+  return abs(getVerticalDistance() - verticalClosestDistance -
+             verticalTargetDistance) < precision;
+};
+
+double getBottomDistance() {
   double sum = 0;
   for (int i = 0; i < ultrasonicRepetitions; i++) {
     digitalWrite(triggerPin, LOW);
@@ -36,26 +52,53 @@ double getDistance() {
     digitalWrite(triggerPin, HIGH);
     delayMicroseconds(10);
     digitalWrite(triggerPin, LOW);
-    sum += pulseIn(echoPin, HIGH) * 0.343 / 2;
+    sum += pulseIn(bottomEchoPin, HIGH) * 0.343 / 2;
   }
   return sum / ultrasonicRepetitions;
 }
 
-void step(int steps) {
-  bottomStepper.move(steps);
-  bottomStepper.setSpeed(300);
-  stepping = true;
+double getVerticalDistance() {
+  double sum = 0;
+  for (int i = 0; i < ultrasonicRepetitions; i++) {
+    digitalWrite(triggerPin, LOW);
+    delayMicroseconds(2);
+    digitalWrite(triggerPin, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(triggerPin, LOW);
+    sum += pulseIn(verticalEchoPin, HIGH) * 0.343 / 2;
+  }
+  return sum / ultrasonicRepetitions;
 }
 
-void attemptStepToTarget() {
-  step(mmToSteps(getDistance() - closestDistance - targetDistance));
+void stepBottom(int steps) {
+  bottomStepper.move(steps);
+  bottomStepper.setSpeed(300);
+  bottomStepping = true;
+}
+
+void stepVertical(int steps) {
+  verticalStepper.move(steps);
+  verticalStepper.setSpeed(300);
+  verticalStepping = true;
+}
+
+void bottomAttemptStepToTarget() {
+  stepBottom(mmToSteps(getBottomDistance() - bottomClosestDistance -
+                       bottomTargetDistance));
+}
+
+void verticalAttemptStepToTarget() {
+  stepVertical(mmToSteps(getVerticalDistance() - verticalClosestDistance -
+                         verticalTargetDistance));
 }
 
 void setup() {
   pinMode(triggerPin, OUTPUT);
-  pinMode(echoPin, INPUT);
+  pinMode(bottomEchoPin, INPUT);
+  pinMode(verticalEchoPin, INPUT);
   Serial.begin(115200);
   bottomStepper.setMaxSpeed(300);
+  verticalStepper.setMaxSpeed(300);
 }
 
 void loop() {
@@ -65,46 +108,87 @@ void loop() {
     String data = raw.substring(raw.indexOf(':') + 1);
 
     if (key == "step") {
+      double bottomSteps = data.substring(0, data.indexOf(',')).toDouble();
+      double verticalSteps = data.substring(data.indexOf(',') + 1).toDouble();
       movingBySteps = true;
-      step(data.toDouble());
+      stepBottom(bottomSteps);
+      stepVertical(verticalSteps);
     } else if (key == "move") {
-      if (data.toDouble() > farthestDistance - closestDistance) {
+      double bottomDistance = data.substring(0, data.indexOf(',')).toDouble();
+      double verticalDistance =
+          data.substring(data.indexOf(',') + 1).toDouble();
+      if (bottomDistance > bottomFarthestDistance - bottomClosestDistance ||
+          verticalDistance >
+              verticalFarthestDistance - verticalClosestDistance) {
         Serial.println("error:Target position is too far away");
       } else {
-        targetDistance = data.toDouble();
-        stepping = true;
+        bottomTargetDistance = bottomDistance;
+        bottomStepping = true;
+        verticalTargetDistance = verticalDistance;
+        verticalStepping = true;
       }
-    } else if (key == "tune") {
-      if (data == "setClosest") {
-        closestDistance = getDistance();
+    } else if (key == "setClosest") {
+      if (data == "bottom") {
+        bottomClosestDistance = getBottomDistance();
         testingStepsPerMM = true;
-        step(-2000);
-      } else if (data == "setFarthest") {
-        farthestDistance = getDistance();
+        stepBottom(-2000);
+      } else if (data == "vertical") {
+        verticalClosestDistance = getVerticalDistance();
+      }
+    } else if (key == "setFarthest") {
+      if (data == "bottom") {
+        bottomFarthestDistance = getBottomDistance();
+      } else if (data == "vertical") {
+        verticalFarthestDistance = getVerticalDistance();
         Serial.println("done");
       }
     }
   }
-  if (stepping && bottomStepper.distanceToGo() == 0) {
-    stepping = false;
+
+  if (bottomStepping && bottomStepper.distanceToGo() == 0) {
+    bottomStepping = false;
     if (movingBySteps) {
-      Serial.println("done");
-      movingBySteps = false;
+      steppersDone++;
     } else if (testingStepsPerMM) {
       testingStepsPerMM = false;
-      stepsPerMM = 2000 / (getDistance() - closestDistance);
+      stepsPerMM = 2000 / (getBottomDistance() - bottomClosestDistance);
       Serial.println("done");
     } else {
-      if (closeEnough()) {
-        movementAttempts = 0;
-        Serial.println("done");
-      } else if (movementAttempts < maxAttempts) {
-        attemptStepToTarget();
+      if (bottomCloseEnough()) {
+        bottomMovementAttempts = 0;
+        steppersDone++;
+      } else if (bottomMovementAttempts < maxAttempts) {
+        bottomAttemptStepToTarget();
       } else {
-        movementAttempts = 0;
+        bottomMovementAttempts = 0;
         Serial.println("error:Could not reach target");
       }
     }
   }
+
+  if (verticalStepping && verticalStepper.distanceToGo() == 0) {
+    verticalStepping = false;
+    if (movingBySteps) {
+      steppersDone++;
+    } else {
+      if (verticalCloseEnough()) {
+        verticalMovementAttempts = 0;
+        steppersDone++;
+      } else if (verticalMovementAttempts < maxAttempts) {
+        verticalAttemptStepToTarget();
+      } else {
+        verticalMovementAttempts = 0;
+        Serial.println("error:Could not reach target");
+      }
+    }
+  }
+
+  if (steppersDone == 2) {
+    steppersDone = 0;
+    movingBySteps = false;
+    Serial.println('done');
+  }
+
   bottomStepper.runSpeedToPosition();
+  verticalStepper.runSpeedToPosition();
 }
